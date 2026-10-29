@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Wallet } from "lucide-react";
 import { SummaryCards } from "@/components/expense/summary-cards";
 import { AllocationChart } from "@/components/expense/allocation-chart";
@@ -10,83 +10,53 @@ import {
   type TransactionPayload,
 } from "@/components/expense/transaction-form";
 import { TransactionList } from "@/components/expense/transaction-list";
+import { computeTotals, type Transaction } from "@/components/expense/types";
 import {
-  computeTotals,
-  type Transaction,
-  type TransactionType,
-} from "@/components/expense/types";
+  createId,
+  getServerTransactionsSnapshot,
+  getTransactionsSnapshot,
+  mutateTransactions,
+  subscribeTransactions,
+} from "@/lib/transactions-store";
 
 export default function Home() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // localStorage read through React's external-store bridge: the server
+  // render and hydration pass use an empty snapshot, real data appears on
+  // the first client render without effects or state cascades.
+  const transactions = useSyncExternalStore(
+    subscribeTransactions,
+    getTransactionsSnapshot,
+    getServerTransactionsSnapshot
+  );
+
   const [editing, setEditing] = useState<Transaction | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setError(null);
-      const res = await fetch("/api/transactions", { cache: "no-store" });
-      if (!res.ok) throw new Error("Request failed");
-      const data = await res.json();
-      setTransactions(
-        (data.transactions ?? []).map(
-          (
-            t: Omit<Transaction, "type"> & { type: string }
-          ): Transaction => ({
-            ...t,
-            type: t.type as TransactionType,
-          })
-        )
-      );
-    } catch {
-      setError("Could not load your transactions. Please refresh the page.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const totals = useMemo(() => computeTotals(transactions), [transactions]);
 
   const handleAdd = useCallback(
     async (data: TransactionPayload): Promise<boolean> => {
-      try {
-        const res = await fetch("/api/transactions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!res.ok) return false;
-        await load();
-        return true;
-      } catch {
-        return false;
-      }
+      const created: Transaction = {
+        id: createId(),
+        ...data,
+        createdAt: new Date().toISOString(),
+      };
+      return mutateTransactions((prev) => [created, ...prev]);
     },
-    [load]
+    []
   );
 
   const handleUpdate = useCallback(
     async (id: string, data: TransactionPayload): Promise<boolean> => {
-      try {
-        const res = await fetch(`/api/transactions/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!res.ok) return false;
-        setEditing(null);
-        await load();
-        return true;
-      } catch {
-        return false;
-      }
+      const exists = getTransactionsSnapshot().some((t) => t.id === id);
+      if (!exists) return false;
+      const ok = mutateTransactions((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...data } : t))
+      );
+      if (ok) setEditing(null);
+      return ok;
     },
-    [load]
+    []
   );
 
   const handleEdit = useCallback((t: Transaction) => {
@@ -100,17 +70,11 @@ export default function Home() {
 
   const handleDelete = useCallback(
     async (id: string): Promise<boolean> => {
-      try {
-        const res = await fetch(`/api/transactions/${id}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) return false;
-        setTransactions((prev) => prev.filter((t) => t.id !== id));
-        setEditing((prev) => (prev?.id === id ? null : prev));
-        return true;
-      } catch {
-        return false;
-      }
+      const exists = getTransactionsSnapshot().some((t) => t.id === id);
+      if (!exists) return false;
+      const ok = mutateTransactions((prev) => prev.filter((t) => t.id !== id));
+      setEditing((prev) => (prev?.id === id ? null : prev));
+      return ok;
     },
     []
   );
@@ -131,24 +95,15 @@ export default function Home() {
             </h1>
             <p className="text-sm text-muted-foreground">
               Track income, deposits, itemized expenses and your remaining
-              balance
+              balance · saved in your browser
             </p>
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:px-6">
-        {error && (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            {error}
-          </div>
-        )}
-
         <section aria-label="Balance summary">
-          <SummaryCards totals={totals} loading={loading} />
+          <SummaryCards totals={totals} />
         </section>
 
         <section
@@ -183,7 +138,6 @@ export default function Home() {
           <div className="lg:col-span-3">
             <TransactionList
               transactions={transactions}
-              loading={loading}
               editing={editing}
               onEdit={handleEdit}
               onDelete={handleDelete}
@@ -194,7 +148,8 @@ export default function Home() {
 
       <footer className="mt-auto border-t border-border/60 bg-background">
         <div className="mx-auto w-full max-w-6xl px-4 py-4 text-center text-xs text-muted-foreground sm:px-6">
-          Expense Tracker · Balance = Income − Expenses − Deposits
+          Expense Tracker · Balance = Income − Expenses − Deposits · Data is
+          stored locally in your browser
         </div>
       </footer>
     </div>

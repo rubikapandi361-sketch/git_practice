@@ -6,41 +6,15 @@ import {
   PiggyBank,
   Wallet,
   AlertTriangle,
-  Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, type Totals } from "./types";
 
 interface SummaryCardsProps {
   totals: Totals;
-  loading: boolean;
 }
 
-export function SummaryCards({ totals, loading }: SummaryCardsProps) {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <Card key={i} className="border-border/60">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                  <div className="h-6 w-20 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-28 animate-pulse rounded bg-muted" />
-                </div>
-                <Loader2
-                  className="h-5 w-5 animate-spin text-muted-foreground/40"
-                  aria-hidden="true"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
+export function SummaryCards({ totals }: SummaryCardsProps) {
   const isBalanceNegative = totals.balance < 0;
 
   return (

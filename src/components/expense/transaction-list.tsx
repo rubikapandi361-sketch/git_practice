@@ -66,7 +66,6 @@ type Filter = "ALL" | TransactionType;
 
 interface TransactionListProps {
   transactions: Transaction[];
-  loading: boolean;
   editing: Transaction | null;
   onEdit: (t: Transaction) => void;
   onDelete: (id: string) => Promise<boolean>;
@@ -74,7 +73,6 @@ interface TransactionListProps {
 
 export function TransactionList({
   transactions,
-  loading,
   editing,
   onEdit,
   onDelete,
@@ -129,14 +127,7 @@ export function TransactionList({
         </Tabs>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="flex h-40 items-center justify-center">
-            <Loader2
-              className="h-6 w-6 animate-spin text-muted-foreground/50"
-              aria-label="Loading transactions"
-            />
-          </div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center">
             <ReceiptText
               className="h-8 w-8 text-muted-foreground/40"
