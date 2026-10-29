@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   PiggyBank,
   Trash2,
+  Pencil,
   Loader2,
   ReceiptText,
 } from "lucide-react";
@@ -39,22 +40,25 @@ import {
 
 const TYPE_META: Record<
   TransactionType,
-  { label: string; icon: typeof TrendingUp; classes: string }
+  { label: string; icon: typeof TrendingUp; classes: string; amountClasses: string }
 > = {
   INCOME: {
     label: "Income",
     icon: TrendingUp,
-    classes: "bg-emerald-100 text-emerald-600",
+    classes: "bg-green-100 text-green-600",
+    amountClasses: "text-green-600",
   },
   EXPENSE: {
     label: "Expense",
     icon: ShoppingCart,
-    classes: "bg-rose-100 text-rose-600",
+    classes: "bg-red-100 text-red-600",
+    amountClasses: "text-red-600",
   },
   SAVINGS: {
     label: "Deposit",
     icon: PiggyBank,
-    classes: "bg-amber-100 text-amber-600",
+    classes: "bg-blue-100 text-blue-600",
+    amountClasses: "text-blue-600",
   },
 };
 
@@ -63,12 +67,16 @@ type Filter = "ALL" | TransactionType;
 interface TransactionListProps {
   transactions: Transaction[];
   loading: boolean;
+  editing: Transaction | null;
+  onEdit: (t: Transaction) => void;
   onDelete: (id: string) => Promise<boolean>;
 }
 
 export function TransactionList({
   transactions,
   loading,
+  editing,
+  onEdit,
   onDelete,
 }: TransactionListProps) {
   const { toast } = useToast();
@@ -106,7 +114,7 @@ export function TransactionList({
     <Card className="border-border/60 shadow-sm">
       <CardHeader className="space-y-3 pb-3">
         <div>
-          <CardTitle className="text-base">Transaction History</CardTitle>
+          <CardTitle className="text-base">Recent Transactions</CardTitle>
           <CardDescription>
             All your income, expenses and deposits · newest first
           </CardDescription>
@@ -152,10 +160,15 @@ export function TransactionList({
           >
             {filtered.map((t) => {
               const meta = TYPE_META[t.type];
+              const isEditing = editing?.id === t.id;
               return (
                 <li
                   key={t.id}
-                  className="group flex items-center gap-3 rounded-lg border border-border/50 bg-card p-3 transition-colors hover:bg-muted/40"
+                  className={`group flex items-center gap-3 rounded-lg border p-3 transition-colors ${
+                    isEditing
+                      ? "border-blue-300 bg-blue-50/60"
+                      : "border-border/50 bg-card hover:bg-muted/40"
+                  }`}
                 >
                   <div
                     className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${meta.classes}`}
@@ -166,69 +179,83 @@ export function TransactionList({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="truncate text-sm font-medium">
-                        {t.category}
+                      <span
+                        className="truncate text-sm font-medium"
+                        title={t.description || t.category}
+                      >
+                        {t.description || t.category}
                       </span>
-                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${meta.classes}`}
+                      >
                         {meta.label}
                       </span>
                     </div>
                     <p className="truncate text-xs text-muted-foreground">
+                      {t.description ? `${t.category} · ` : ""}
                       {formatDate(t.date)}
-                      {t.description ? ` · ${t.description}` : ""}
                     </p>
                   </div>
 
                   <span
-                    className={`shrink-0 text-sm font-semibold tabular-nums ${
-                      t.type === "INCOME"
-                        ? "text-emerald-600"
-                        : t.type === "EXPENSE"
-                          ? "text-rose-600"
-                          : "text-amber-600"
-                    }`}
+                    className={`shrink-0 text-sm font-semibold tabular-nums ${meta.amountClasses}`}
                   >
                     {t.type === "INCOME" && "+"}
                     {t.type === "EXPENSE" && "−"}
                     {formatCurrency(t.amount)}
                   </span>
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-rose-600"
-                        aria-label={`Delete ${t.category} transaction of ${formatCurrency(t.amount)}`}
-                      >
-                        {deletingId === t.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently remove the {meta.label.toLowerCase()}{" "}
-                          of {formatCurrency(t.amount)} ({t.category}) from your
-                          history. Your balance and charts will update
-                          immediately.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(t.id)}
-                          className="bg-rose-600 text-white hover:bg-rose-700"
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground/50 hover:text-blue-600"
+                      aria-label={`Edit ${t.description || t.category} transaction of ${formatCurrency(t.amount)}`}
+                      onClick={() => onEdit(t)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground/50 hover:text-red-600"
+                          aria-label={`Delete ${t.description || t.category} transaction of ${formatCurrency(t.amount)}`}
                         >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          {deletingId === t.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Delete transaction?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently remove the{" "}
+                            {meta.label.toLowerCase()} of{" "}
+                            {formatCurrency(t.amount)} (
+                            {t.description || t.category}) from your history.
+                            Your balance and charts will update immediately.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(t.id)}
+                            className="bg-red-600 text-white hover:bg-red-700"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </li>
               );
             })}

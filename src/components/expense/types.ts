@@ -30,13 +30,13 @@ export const CATEGORY_OPTIONS: Record<TransactionType, string[]> = {
     "Other Income",
   ],
   EXPENSE: [
-    "Groceries",
-    "Electronics",
-    "Food & Drinks",
-    "Clothing",
-    "Transport",
-    "Rent & Bills",
+    "Food",
+    "Rent",
+    "Bills",
     "Entertainment",
+    "Shopping",
+    "Groceries",
+    "Transport",
     "Health",
     "Other",
   ],
@@ -49,23 +49,24 @@ export const CATEGORY_OPTIONS: Record<TransactionType, string[]> = {
   ],
 };
 
-// Category colors for the spending pie chart (no blue/indigo)
+// Category colors for the spending pie chart
 export const CATEGORY_PALETTE = [
-  "#f43f5e", // rose
+  "#ef4444", // red
+  "#3b82f6", // blue
+  "#22c55e", // green
   "#f59e0b", // amber
   "#8b5cf6", // violet
-  "#14b8a6", // teal
   "#ec4899", // pink
-  "#84cc16", // lime
+  "#14b8a6", // teal
   "#f97316", // orange
-  "#06b6d4", // cyan
-  "#a855f7", // purple
+  "#84cc16", // lime
 ];
 
+// Color coding: green = income/balance, blue = savings/deposits, red = expenses
 export const TYPE_COLORS: Record<TransactionType, string> = {
-  INCOME: "#10b981", // emerald
-  EXPENSE: "#f43f5e", // rose
-  SAVINGS: "#f59e0b", // amber
+  INCOME: "#22c55e", // green
+  EXPENSE: "#ef4444", // red
+  SAVINGS: "#3b82f6", // blue
 };
 
 export const formatCurrency = (value: number): string =>

@@ -43,9 +43,9 @@ export function CategoryChart({ transactions }: CategoryChartProps) {
   return (
     <Card className="border-border/60 shadow-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Spending by Category</CardTitle>
+        <CardTitle className="text-base">Expenses by Category</CardTitle>
         <CardDescription>
-          Amount used per product category · total {formatCurrency(totalSpent)}
+          Amount spent per category · total {formatCurrency(totalSpent)}
         </CardDescription>
       </CardHeader>
       <CardContent>

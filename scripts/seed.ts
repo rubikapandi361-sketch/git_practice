@@ -2,11 +2,21 @@ import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
+// Usage:
+//   bun run scripts/seed.ts          -> seed only if database is empty
+//   bun run scripts/seed.ts --reset  -> wipe all transactions and re-seed
 async function main() {
-  const count = await db.transaction.count();
-  if (count > 0) {
-    console.log(`Database already has ${count} transactions, skipping seed.`);
-    return;
+  const reset = process.argv.includes("--reset");
+
+  if (reset) {
+    const deleted = await db.transaction.deleteMany({});
+    console.log(`Wiped ${deleted.count} existing transactions.`);
+  } else {
+    const count = await db.transaction.count();
+    if (count > 0) {
+      console.log(`Database already has ${count} transactions, skipping seed.`);
+      return;
+    }
   }
 
   const now = new Date();
@@ -20,12 +30,13 @@ async function main() {
     // Deposits to savings
     { type: "SAVINGS", amount: 500, category: "Bank Deposit", description: "Monthly savings transfer", date: d(2) },
     { type: "SAVINGS", amount: 200, category: "Emergency Fund", description: "Top-up", date: d(15) },
-    // Product expenses
-    { type: "EXPENSE", amount: 180.5, category: "Groceries", description: "Weekly groceries", date: d(3) },
-    { type: "EXPENSE", amount: 129.99, category: "Electronics", description: "Wireless headphones", date: d(8) },
-    { type: "EXPENSE", amount: 64.2, category: "Food & Drinks", description: "Dinner with friends", date: d(10) },
+    // Itemized expenses
+    { type: "EXPENSE", amount: 900, category: "Rent", description: "Monthly house rent", date: d(3) },
+    { type: "EXPENSE", amount: 180.5, category: "Food", description: "Weekly groceries", date: d(5) },
+    { type: "EXPENSE", amount: 120, category: "Bills", description: "Electricity & internet", date: d(7) },
+    { type: "EXPENSE", amount: 129.99, category: "Shopping", description: "Wireless headphones", date: d(8) },
     { type: "EXPENSE", amount: 45, category: "Transport", description: "Metro card top-up", date: d(11) },
-    { type: "EXPENSE", amount: 89.9, category: "Clothing", description: "Running shoes", date: d(16) },
+    { type: "EXPENSE", amount: 89.9, category: "Shopping", description: "Running shoes", date: d(16) },
     { type: "EXPENSE", amount: 30, category: "Entertainment", description: "Movie night", date: d(18) },
   ];
 

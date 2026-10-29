@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/chart";
 import { formatCurrency } from "./types";
 
+// Color coding: red = expenses, blue = savings/deposits, green = balance
 const ALLOCATION_COLORS = {
-  spent: "#f43f5e",
-  saved: "#f59e0b",
-  remaining: "#14b8a6",
+  spent: "#ef4444",
+  saved: "#3b82f6",
+  remaining: "#22c55e",
 };
 
 const chartConfig = {
@@ -54,7 +55,7 @@ export function AllocationChart({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Where Your Income Goes</CardTitle>
         <CardDescription>
-          How your credited income is split between products, deposits and balance
+          Spent vs saved vs remaining balance out of your credited income
         </CardDescription>
       </CardHeader>
       <CardContent>

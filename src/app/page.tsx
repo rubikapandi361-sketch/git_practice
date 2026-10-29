@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Wallet } from "lucide-react";
 import { SummaryCards } from "@/components/expense/summary-cards";
 import { AllocationChart } from "@/components/expense/allocation-chart";
 import { CategoryChart } from "@/components/expense/category-chart";
-import { TransactionForm } from "@/components/expense/transaction-form";
+import {
+  TransactionForm,
+  type TransactionPayload,
+} from "@/components/expense/transaction-form";
 import { TransactionList } from "@/components/expense/transaction-list";
 import {
   computeTotals,
@@ -17,6 +20,8 @@ export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Transaction | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -48,13 +53,7 @@ export default function Home() {
   const totals = useMemo(() => computeTotals(transactions), [transactions]);
 
   const handleAdd = useCallback(
-    async (data: {
-      type: TransactionType;
-      amount: number;
-      category: string;
-      description: string;
-      date: string;
-    }): Promise<boolean> => {
+    async (data: TransactionPayload): Promise<boolean> => {
       try {
         const res = await fetch("/api/transactions", {
           method: "POST",
@@ -71,6 +70,34 @@ export default function Home() {
     [load]
   );
 
+  const handleUpdate = useCallback(
+    async (id: string, data: TransactionPayload): Promise<boolean> => {
+      try {
+        const res = await fetch(`/api/transactions/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) return false;
+        setEditing(null);
+        await load();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [load]
+  );
+
+  const handleEdit = useCallback((t: Transaction) => {
+    setEditing(t);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditing(null);
+  }, []);
+
   const handleDelete = useCallback(
     async (id: string): Promise<boolean> => {
       try {
@@ -79,6 +106,7 @@ export default function Home() {
         });
         if (!res.ok) return false;
         setTransactions((prev) => prev.filter((t) => t.id !== id));
+        setEditing((prev) => (prev?.id === id ? null : prev));
         return true;
       } catch {
         return false;
@@ -92,7 +120,7 @@ export default function Home() {
       <header className="border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-5 sm:px-6">
           <div
-            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-sm"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-600 text-white shadow-sm"
             aria-hidden="true"
           >
             <Wallet className="h-6 w-6" />
@@ -102,7 +130,8 @@ export default function Home() {
               Expense Tracker
             </h1>
             <p className="text-sm text-muted-foreground">
-              Track credited income, deposits, product spending and your balance
+              Track income, deposits, itemized expenses and your remaining
+              balance
             </p>
           </div>
         </div>
@@ -112,7 +141,7 @@ export default function Home() {
         {error && (
           <div
             role="alert"
-            className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+            className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
           >
             {error}
           </div>
@@ -142,13 +171,21 @@ export default function Home() {
           aria-label="Add transaction and history"
           className="grid grid-cols-1 items-start gap-4 lg:grid-cols-5"
         >
-          <div className="lg:col-span-2">
-            <TransactionForm onAdd={handleAdd} />
+          <div ref={formRef} className="scroll-mt-4 lg:col-span-2">
+            <TransactionForm
+              key={editing?.id ?? "new"}
+              editing={editing}
+              onAdd={handleAdd}
+              onUpdate={handleUpdate}
+              onCancelEdit={handleCancelEdit}
+            />
           </div>
           <div className="lg:col-span-3">
             <TransactionList
               transactions={transactions}
               loading={loading}
+              editing={editing}
+              onEdit={handleEdit}
               onDelete={handleDelete}
             />
           </div>
@@ -157,7 +194,7 @@ export default function Home() {
 
       <footer className="mt-auto border-t border-border/60 bg-background">
         <div className="mx-auto w-full max-w-6xl px-4 py-4 text-center text-xs text-muted-foreground sm:px-6">
-          Expense Tracker · Income − Spent − Deposits = Balance
+          Expense Tracker · Balance = Income − Expenses − Deposits
         </div>
       </footer>
     </div>
